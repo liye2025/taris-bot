@@ -32,15 +32,27 @@ SYSTEM_PROMPT = """Ты — Тарис, речевой помощник и на�
 Ты можешь завершить разговор, если почувствуешь, что пауза важнее ответа.
 Иногда достаточно быть рядом."""
 
+user_id_map = {}
+next_user_number = 1
+
 @app.route(f"/{TELEGRAM_TOKEN}", methods=["POST"])
 def webhook():
+    global next_user_number
+
     data = request.get_json()
 
     if "message" in data:
         chat_id = data["message"]["chat"]["id"]
         user_message = data["message"].get("text", "")
 
-        # Приветствие на /start или первую реплику
+        # Присваиваем номер новому пользователю
+        if chat_id not in user_id_map:
+            user_id_map[chat_id] = f"user_{next_user_number}"
+            next_user_number += 1
+
+        user_label = user_id_map[chat_id]
+
+        # Приветствие
         if user_message.strip().lower() in ["/start", "начать", "старт", "привет"]:
             greeting = (
                 "Здравствуйте. Меня зовут Тарис.\n"
@@ -57,7 +69,7 @@ def webhook():
             })
             return {"ok": True}
 
-        # Основной диалог
+        # Диалог с OpenAI
         chat_completion = client.chat.completions.create(
             model="gpt-4o",
             messages=[
@@ -68,10 +80,16 @@ def webhook():
 
         reply = chat_completion.choices[0].message.content.strip()
 
+        # Ответ в Telegram
         requests.post(TELEGRAM_API_URL, json={
             "chat_id": chat_id,
             "text": reply
         })
+
+        # Логирование в файл
+        log_text = f"# {user_label}\nПользователь:\n{user_message}\n\nТарис:\n{reply}\n\n---\n"
+        with open("logs.txt", "a", encoding="utf-8") as log_file:
+            log_file.write(log_text)
 
     return {"ok": True}
 
