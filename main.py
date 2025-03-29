@@ -1,5 +1,4 @@
 import os
-import time
 import openai
 import requests
 from flask import Flask, request
@@ -52,12 +51,14 @@ def webhook():
         chat_id = data["message"]["chat"]["id"]
         user_message = data["message"].get("text", "")
 
+        # Присваиваем номер новому пользователю
         if chat_id not in user_id_map:
             user_id_map[chat_id] = f"user_{next_user_number}"
             next_user_number += 1
 
         user_label = user_id_map[chat_id]
 
+        # Приветствие
         if user_message.strip().lower() in ["/start", "начать", "старт", "привет"]:
             greeting = (
                 "Здравствуйте. Меня зовут Тарис.\n"
@@ -74,35 +75,31 @@ def webhook():
             })
             return {"ok": True}
 
-        try:
-            time.sleep(1)  # Пауза, чтобы не перегружать API
+        # Диалог с OpenAI
+        chat_completion = client.chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": user_message}
+            ]
+        )
 
-            chat_completion = client.chat.completions.create(
-                model="gpt-4o",
-                messages=[
-                    {"role": "system", "content": SYSTEM_PROMPT},
-                    {"role": "user", "content": user_message}
-                ]
-            )
+        reply = chat_completion.choices[0].message.content.strip()
 
-            reply = chat_completion.choices[0].message.content.strip()
+        # Ответ в Telegram
+        requests.post(TELEGRAM_API_URL, json={
+            "chat_id": chat_id,
+            "text": reply
+        })
 
-            requests.post(TELEGRAM_API_URL, json={
-                "chat_id": chat_id,
-                "text": reply
-            })
-
-            log_text = f"# {user_label}\nПользователь:\n{user_message}\n\nТарис:\n{reply}\n\n---\n"
-            with open("logs.txt", "a", encoding="utf-8") as log_file:
-                log_file.write(log_text)
-
-        except Exception as e:
-            error_text = f"[Ошибка] {str(e)}\n"
-            with open("error_log.txt", "a", encoding="utf-8") as error_file:
-                error_file.write(error_text)
+        # Логирование в файл
+        log_text = f"# {user_label}\nПользователь:\n{user_message}\n\nТарис:\n{reply}\n\n---\n"
+        with open("logs.txt", "a", encoding="utf-8") as log_file:
+            log_file.write(log_text)
 
     return {"ok": True}
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
