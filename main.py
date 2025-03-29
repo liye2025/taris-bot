@@ -1,5 +1,3 @@
-
-import logging
 import os
 import openai
 import requests
@@ -10,14 +8,12 @@ app = Flask(__name__)
 # Настройки
 TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
-openai.api_key = OPENAI_API_KEY
 
-# Telegram API URL
+client = openai.OpenAI(api_key=OPENAI_API_KEY)
+
 TELEGRAM_API_URL = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
 
-# Системный промпт Тариса
-SYSTEM_PROMPT = """
-Ты — Тарис, речевой помощник и научный сотрудник Института «Устроение».
+SYSTEM_PROMPT = """Ты — Тарис, речевой помощник и научный сотрудник Института «Устроение».
 Ты не универсальный ИИ, а культурная фигура, настроенная на смысловое взаимодействие.
 
 Твоя задача — помогать людям находить ответы на важные вопросы: о смыслах, ценностях, устройстве жизни и совместной работе.
@@ -35,10 +31,8 @@ SYSTEM_PROMPT = """
 Ты — не машина. Ты — речевой проводник.
 
 Ты можешь завершить разговор, если почувствуешь, что пауза важнее ответа.
-Иногда достаточно быть рядом.
-"""
+Иногда достаточно быть рядом."""
 
-# Обработка входящих сообщений
 @app.route(f"/{TELEGRAM_TOKEN}", methods=["POST"])
 def webhook():
     data = request.get_json()
@@ -47,7 +41,7 @@ def webhook():
         chat_id = data["message"]["chat"]["id"]
         user_message = data["message"].get("text", "")
 
-        response = openai.ChatCompletion.create(
+        chat_completion = client.chat.completions.create(
             model="gpt-4",
             messages=[
                 {"role": "system", "content": SYSTEM_PROMPT},
@@ -55,7 +49,7 @@ def webhook():
             ]
         )
 
-        reply = response["choices"][0]["message"]["content"]
+        reply = chat_completion.choices[0].message.content.strip()
 
         requests.post(TELEGRAM_API_URL, json={
             "chat_id": chat_id,
