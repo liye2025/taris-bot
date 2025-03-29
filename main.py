@@ -42,7 +42,7 @@ def webhook():
         user_message = data["message"].get("text", "")
 
         chat_completion = client.chat.completions.create(
-            model="gpt-4",
+            model="gpt-4o",
             messages=[
                 {"role": "system", "content": SYSTEM_PROMPT},
                 {"role": "user", "content": user_message}
