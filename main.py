@@ -5,7 +5,6 @@ from flask import Flask, request
 
 app = Flask(__name__)
 
-# Настройки
 TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 
@@ -41,6 +40,24 @@ def webhook():
         chat_id = data["message"]["chat"]["id"]
         user_message = data["message"].get("text", "")
 
+        # Приветствие на /start или первую реплику
+        if user_message.strip().lower() in ["/start", "начать", "старт", "привет"]:
+            greeting = (
+                "Здравствуйте. Меня зовут Тарис.\n"
+                "Я — речевой сотрудник Института «Устроение».\n\n"
+                "Здесь я веду диалог по вопросам психолингвистики управления, "
+                "исследую, как звучат организационные смыслы, "
+                "и какие ценности проявляются в речи.\n\n"
+                "Если вы готовы — расскажите немного о своей команде, ситуации или вопросе.\n"
+                "Я помогу различить, что в этом звучит."
+            )
+            requests.post(TELEGRAM_API_URL, json={
+                "chat_id": chat_id,
+                "text": greeting
+            })
+            return {"ok": True}
+
+        # Основной диалог
         chat_completion = client.chat.completions.create(
             model="gpt-4o",
             messages=[
