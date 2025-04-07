@@ -63,7 +63,7 @@ def webhook():
         # Обработка команды /getlogs (только для Лизы)
         if user_message.strip().lower() == "/getlogs":
             if chat_id == 326450794:
-                with open("logs/logs.txt", "rb") as log_file:
+                with open("/tmp/logs.txt", "rb") as log_file:
                     requests.post(
                         f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendDocument",
                         data={"chat_id": chat_id},
@@ -154,6 +154,15 @@ def webhook():
             )
             reply = chat_completion.choices[0].message.content.strip()
 
+        chat_completion = client.chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": user_message}
+            ]
+        )
+
+        reply = chat_completion.choices[0].message.content.strip()
 
         requests.post(TELEGRAM_API_URL, json={
             "chat_id": chat_id,
@@ -168,5 +177,3 @@ def webhook():
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
-
-
