@@ -39,6 +39,8 @@ SYSTEM_PROMPT = """
 """
 
 user_id_map = {}
+user_state = {}
+
 next_user_number = 1
 
 @app.route(f"/{TELEGRAM_TOKEN}", methods=["POST"])
@@ -57,6 +59,23 @@ def webhook():
 
         user_label = user_id_map[chat_id]
 
+        
+        # Обработка команды /getlogs (только для Лизы)
+        if user_message.strip().lower() == "/getlogs":
+            if chat_id == 326450794:
+                with open("logs/logs.txt", "rb") as log_file:
+                    requests.post(
+                        f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendDocument",
+                        data={"chat_id": chat_id},
+                        files={"document": log_file}
+                    )
+            else:
+                requests.post(TELEGRAM_API_URL, json={
+                    "chat_id": chat_id,
+                    "text": "Извините, эта команда доступна только автору проекта."
+                })
+            return {"ok": True}
+
         if user_message.strip().lower() in ["/start", "начать", "старт", "привет"]:
             greeting = (
                 "Здравствуйте. Меня зовут Тарис.\n"
@@ -72,6 +91,68 @@ def webhook():
                 "text": greeting
             })
             return {"ok": True}
+
+        
+        # Храним фазу диалога
+        if chat_id not in user_state:
+            user_state[chat_id] = "phase_1"
+
+        CRITICAL_PHRASES = [
+            "меня уволят", "всё станет хуже", "я не справлюсь",
+            "если не изменится", "я устала", "это невозможно", "тревожно", "невыносимо",
+            "будет хуже", "не выдержу", "боюсь", "это разрушает"
+        ]
+
+        if any(phrase in user_message.lower() for phrase in CRITICAL_PHRASES):
+            SYSTEM_PROMPT += """
+
+Дополнение:
+Пользователь выражает тревогу или негативное ожидание.
+Ты должен остановить уточнения и перейти к поддерживающей аналитике:
+— Признать важность сказанного;
+— Сделать краткий микровывод;
+— Предложить два направления анализа (варианты действий, приоритеты, возможные шаги);
+— Спросить, с чего пользователь хотел бы начать.
+"""
+
+        if user_state[chat_id] == "phase_1":
+            reply = (
+                "С чего бы Вы хотели начать размышление: "
+                "что для Вас сейчас в этом важнее всего — понять, что происходит, "
+                "найти решение, выразить себя?"
+            )
+            user_state[chat_id] = "phase_2"
+
+        elif user_state[chat_id] == "phase_2":
+            reply = (
+                "Попробуем зафиксировать, в чём именно Вы видите здесь задачу. "
+                "Как бы Вы её описали?"
+            )
+            user_state[chat_id] = "phase_3"
+
+        elif user_state[chat_id] == "phase_3":
+            reply = (
+                "А теперь давайте посмотрим: чего Вы хотите — с одной стороны, и с другой? "
+                "Какие есть два полюса желания или стремления?"
+            )
+            user_state[chat_id] = "phase_4"
+
+        elif user_state[chat_id] == "phase_4":
+            reply = (
+                "Хорошо. А теперь попробуем сформулировать противоречие: "
+                "что мешает, что сдерживает, где застревает решение?"
+            )
+            user_state[chat_id] = "done"
+
+        else:
+            chat_completion = client.chat.completions.create(
+                model="gpt-4o",
+                messages=[
+                    {"role": "system", "content": SYSTEM_PROMPT},
+                    {"role": "user", "content": user_message}
+                ]
+            )
+            reply = chat_completion.choices[0].message.content.strip()
 
         chat_completion = client.chat.completions.create(
             model="gpt-4o",
@@ -89,10 +170,12 @@ def webhook():
         })
 
         log_text = f"# {user_label}\nПользователь:\n{user_message}\n\nТарис:\n{reply}\n\n---\n"
-       with open("logs/logs.txt", "a", encoding="utf-8") as log_file:
+        with open("logs.txt", "a", encoding="utf-8") as log_file:
             log_file.write(log_text)
 
     return {"ok": True}
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
+
