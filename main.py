@@ -89,7 +89,7 @@ def webhook():
         })
 
         log_text = f"# {user_label}\nПользователь:\n{user_message}\n\nТарис:\n{reply}\n\n---\n"
-        with open("logs.txt", "a", encoding="utf-8") as log_file:
+       with open("logs/logs.txt", "a", encoding="utf-8") as log_file:
             log_file.write(log_text)
 
     return {"ok": True}
