@@ -154,15 +154,6 @@ def webhook():
             )
             reply = chat_completion.choices[0].message.content.strip()
 
-        chat_completion = client.chat.completions.create(
-            model="gpt-4o",
-            messages=[
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": user_message}
-            ]
-        )
-
-        reply = chat_completion.choices[0].message.content.strip()
 
         requests.post(TELEGRAM_API_URL, json={
             "chat_id": chat_id,
