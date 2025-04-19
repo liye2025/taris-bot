@@ -1,4 +1,3 @@
-
 import os
 import openai
 import requests
@@ -22,10 +21,10 @@ phases = {
                 "Моя задача — сопровождать размышления и помогать в поиске решений в области организационной психологии.\n"
                 "Я не даю готовых советов, а помогаю структурировать ситуацию, увидеть противоречия и наметить возможные ходы.\n\n"
                 "Если вы готовы — расскажите немного о себе и том вопросе, который для вас сейчас важен.",
-    
-{"role": "user", "content": "Это действительно то, на чём вы хотели бы сосредоточиться? Или вы бы сформулировали иначе?"}
 
-                      "Что бы вы хотели в итоге почувствовать, видеть, иметь?",
+    "problem": "Расскажите, как вы видите суть своей ситуации. Что происходит?",
+
+    "desired_result": "Что бы вы хотели в итоге почувствовать, видеть, иметь?",
 
     "contradiction": "Давайте посмотрим вместе: нет ли тут какого-то внутреннего напряжения или противоречия?\n"
                      "Например, вы хотите одного, но одновременно вас что-то сдерживает или мешает.",
@@ -70,7 +69,6 @@ def webhook():
             next_user_number += 1
         user_label = user_id_map[chat_id]
 
-        # Команда логов
         if user_message.strip().lower() == "/getlogs":
             if chat_id == 326450794:
                 with open("/tmp/logs.txt", "rb") as log_file:
@@ -86,108 +84,46 @@ def webhook():
                 })
             return {"ok": True}
 
-        # Начало — при первом входе
         if chat_id not in user_state or user_message.strip().lower() in ["/start", "начать", "старт"]:
             user_state[chat_id] = 0
 
         state_index = user_state[chat_id]
 
-        
         if state_index < len(phase_order):
             current_phase = phase_order[state_index]
 
-            if current_phase == "problem":
+            if current_phase in ["problem", "desired_result", "solution", "resolve_contradiction", "reflect_solution", "action_step", "closing"]:
+                prompt_map = {
+                    "problem": "Ты речевой помощник. Человек только что описал ситуацию. Переформулируй её кратко и бережно, одним-двумя предложениями, чтобы уточнить, правильно ли ты понял суть запроса. В конце задай вопрос: «Это и есть суть ситуации?»",
+                    "desired_result": "Ты речевой помощник. Человек только что описал желаемый результат или образ будущего. Сформулируй это кратко и позитивно — и задай уточняющий вопрос: «Так вы себе это представляете?»",
+                    "solution": "Ты речевой помощник. Человек только что предложил возможное решение своей ситуации. Отзеркаль это решение кратко и бережно, подчеркни его сильную сторону — например, устойчивость, простоту или реалистичность — и задай уточняющий вопрос: «Это тот шаг, с которого вы бы хотели начать?»",
+                    "resolve_contradiction": "Ты речевой помощник. Человек описал противоречие или напряжение между тем, чего он хочет, и тем, что мешает. Помоги бережно сформулировать это противоречие и уточни: «Так вы это ощущаете?»",
+                    "reflect_solution": "Человек только что описал своё возможное решение. Твоя задача — бережно отразить суть, назвать в этом решении сильную сторону и возможную уязвимость, и задать мягкий вопрос: «Как вы сами это оцениваете?»",
+                    "action_step": "Мы прошли путь от формулировки запроса до возможного решения. Сформулируй короткое резюме и предложи человеку выбрать один небольшой шаг, с которого он готов начать.",
+                    "closing": "Подведи итог диалога с уважением и теплотой. Напомни, что осмысление — это уже движение. Поблагодари за разговор и пригласи вернуться, если понадобится."
+                }
+
                 completion = client.chat.completions.create(
                     model="gpt-4o",
                     messages=[
-                        {"role": "system", "content": "Ты речевой помощник. Человек только что описал ситуацию. Переформулируй её кратко и бережно, одним-двумя предложениями, чтобы уточнить, правильно ли ты понял суть запроса. В конце задай вопрос: «Это и есть суть ситуации?»"},
+                        {"role": "system", "content": prompt_map[current_phase]},
                         {"role": "user", "content": user_message}
                     ]
                 )
                 reply = completion.choices[0].message.content.strip()
-
-            elif current_phase == "desired_result":
-                completion = client.chat.completions.create(
-                    model="gpt-4o",
-                    messages=[
-                        {"role": "system", "content": "Ты речевой помощник. Человек только что описал желаемый результат или образ будущего. Сформулируй это кратко и позитивно — и задай уточняющий вопрос: «Так вы себе это представляете?»"},
-                        {"role": "user", "content": user_message}
-                    ]
-                )
-                
-            elif current_phase == "solution":
-                completion = client.chat.completions.create(
-                    model="gpt-4o",
-                    messages=[
-                        {"role": "system", "content": "Ты речевой помощник. Человек только что предложил возможное решение своей ситуации. "
-                                                     "Отзеркаль это решение кратко и бережно, подчеркни его сильную сторону — например, устойчивость, простоту или реалистичность — "
-                                                     "и задай уточняющий вопрос: «Это тот шаг, с которого вы бы хотели начать?»"},
-                        {"role": "user", "content": user_message}
-                    ]
-                )
-                
-            elif current_phase == "resolve_contradiction":
-                completion = client.chat.completions.create(
-                    model="gpt-4o",
-                    messages=[
-                        {"role": "system", "content": "Ты речевой помощник. Человек описал противоречие или напряжение между тем, чего он хочет, и тем, что мешает. Помоги бережно сформулировать это противоречие и уточни: «Так вы это ощущаете?»"},
-                        {"role": "user", "content": user_message}
-                    ]
-                )
-                reply = completion.choices[0].message.content.strip()
-
-            
-            elif current_phase == "reflect_solution":
-                completion = client.chat.completions.create(
-                    model="gpt-4o",
-                    messages=[
-                        {"role": "system", "content": "Человек только что описал своё возможное решение. Твоя задача — бережно отразить суть, назвать в этом решении сильную сторону и возможную уязвимость, и задать мягкий вопрос: «Как вы сами это оцениваете?»"},
-                        {"role": "user", "content": user_message}
-                    ]
-                )
-                reply = completion.choices[0].message.content.strip()
-
-
-            
-            elif current_phase == "action_step":
-                completion = client.chat.completions.create(
-                    model="gpt-4o",
-                    messages=[
-                        {"role": "system", "content": "Мы прошли путь от формулировки запроса до возможного решения. Сформулируй короткое резюме и предложи человеку выбрать один небольшой шаг, с которого он готов начать."},
-                        {"role": "user", "content": user_message}
-                    ]
-                )
-                reply = completion.choices[0].message.content.strip()
-
-
-            
-            elif current_phase == "closing":
-                completion = client.chat.completions.create(
-                    model="gpt-4o",
-                    messages=[
-                        {"role": "system", "content": "Подведи итог диалога с уважением и теплотой. Напомни, что осмысление — это уже движение. Поблагодари за разговор и пригласи вернуться, если понадобится."},
-                        {"role": "user", "content": user_message}
-                    ]
-                )
-                reply = completion.choices[0].message.content.strip()
-
-
             else:
                 reply = phases[current_phase]
 
             user_state[chat_id] += 1
 
-            current_phase = phase_order[state_index]
+            requests.post(TELEGRAM_API_URL, json={
+                "chat_id": chat_id,
+                "text": reply
+            })
 
-
-        requests.post(TELEGRAM_API_URL, json={
-            "chat_id": chat_id,
-            "text": reply
-        })
-
-        log_text = f"# {user_label}\nПользователь:\n{user_message}\n\nТарис:\n{reply}\n\n---\n"
-        with open("/tmp/logs.txt", "a", encoding="utf-8") as log_file:
-            log_file.write(log_text)
+            log_text = f"# {user_label}\nПользователь:\n{user_message}\n\nТарис:\n{reply}\n\n---\n"
+            with open("/tmp/logs.txt", "a", encoding="utf-8") as log_file:
+                log_file.write(log_text)
 
     return {"ok": True}
 
