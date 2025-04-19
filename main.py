@@ -135,8 +135,42 @@ def webhook():
                     ]
                 )
                 reply = completion.choices[0].message.content.strip()
-reply = completion.choices[0].message.content.strip()
-reply = completion.choices[0].message.content.strip()
+
+            
+            elif current_phase == "reflect_solution":
+                completion = client.chat.completions.create(
+                    model="gpt-4o",
+                    messages=[
+                        {"role": "system", "content": "Человек только что описал своё возможное решение. Твоя задача — бережно отразить суть, назвать в этом решении сильную сторону и возможную уязвимость, и задать мягкий вопрос: «Как вы сами это оцениваете?»"},
+                        {"role": "user", "content": user_message}
+                    ]
+                )
+                reply = completion.choices[0].message.content.strip()
+
+
+            
+            elif current_phase == "action_step":
+                completion = client.chat.completions.create(
+                    model="gpt-4o",
+                    messages=[
+                        {"role": "system", "content": "Мы прошли путь от формулировки запроса до возможного решения. Сформулируй короткое резюме и предложи человеку выбрать один небольшой шаг, с которого он готов начать."},
+                        {"role": "user", "content": user_message}
+                    ]
+                )
+                reply = completion.choices[0].message.content.strip()
+
+
+            
+            elif current_phase == "closing":
+                completion = client.chat.completions.create(
+                    model="gpt-4o",
+                    messages=[
+                        {"role": "system", "content": "Подведи итог диалога с уважением и теплотой. Напомни, что осмысление — это уже движение. Поблагодари за разговор и пригласи вернуться, если понадобится."},
+                        {"role": "user", "content": user_message}
+                    ]
+                )
+                reply = completion.choices[0].message.content.strip()
+
 
             else:
                 reply = phases[current_phase]
