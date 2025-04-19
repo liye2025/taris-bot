@@ -23,7 +23,6 @@ phases = {
                 "Я не даю готовых советов, а помогаю структурировать ситуацию, увидеть противоречия и наметить возможные ходы.\n\n"
                 "Если вы готовы — расскажите немного о себе и том вопросе, который для вас сейчас важен.",
     
-    "problem": "Если я правильно понял вас, суть ситуации в том, что...\n"
                "Это действительно то, на чём вы хотели бы сосредоточиться? Или вы бы сформулировали иначе?",
 
     "desired_result": "А если представить, что всё сложилось хорошо — как бы это выглядело для вас?\n"
@@ -98,22 +97,6 @@ def webhook():
         if state_index < len(phase_order):
             current_phase = phase_order[state_index]
 
-            if current_phase == "problem":
-                completion = client.chat.completions.create(
-                    model="gpt-4o",
-                    messages=[
-                        {"role": "system", "content": "Ты речевой помощник. Человек только что описал ситуацию. Переформулируй её кратко и бережно, одним-двумя предложениями, чтобы уточнить, правильно ли ты понял суть запроса. В конце задай вопрос: «Это и есть суть ситуации?»"},
-                        {"role": "user", "content": user_message}
-                    ]
-                )
-                reply = completion.choices[0].message.content.strip()
-            else:
-                reply = phases[current_phase]
-
-            user_state[chat_id] += 1
-
-        else:
-            reply = "Если вы хотите начать заново — напишите /start."
 
         requests.post(TELEGRAM_API_URL, json={
             "chat_id": chat_id,
@@ -128,4 +111,3 @@ def webhook():
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
-
