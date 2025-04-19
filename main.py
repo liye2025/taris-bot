@@ -114,7 +114,19 @@ def webhook():
                         {"role": "user", "content": user_message}
                     ]
                 )
+                
+            elif current_phase == "solution":
+                completion = client.chat.completions.create(
+                    model="gpt-4o",
+                    messages=[
+                        {"role": "system", "content": "Ты речевой помощник. Человек только что предложил возможное решение своей ситуации. "
+                                                     "Отзеркаль это решение кратко и бережно, подчеркни его сильную сторону — например, устойчивость, простоту или реалистичность — "
+                                                     "и задай уточняющий вопрос: «Это тот шаг, с которого вы бы хотели начать?»"},
+                        {"role": "user", "content": user_message}
+                    ]
+                )
                 reply = completion.choices[0].message.content.strip()
+reply = completion.choices[0].message.content.strip()
 
             else:
                 reply = phases[current_phase]
