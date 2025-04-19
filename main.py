@@ -25,7 +25,6 @@ phases = {
     
                "Это действительно то, на чём вы хотели бы сосредоточиться? Или вы бы сформулировали иначе?",
 
-    "desired_result": "А если представить, что всё сложилось хорошо — как бы это выглядело для вас?\n"
                       "Что бы вы хотели в итоге почувствовать, видеть, иметь?",
 
     "contradiction": "Давайте посмотрим вместе: нет ли тут какого-то внутреннего напряжения или противоречия?\n"
@@ -95,6 +94,33 @@ def webhook():
 
         
         if state_index < len(phase_order):
+            current_phase = phase_order[state_index]
+
+            if current_phase == "problem":
+                completion = client.chat.completions.create(
+                    model="gpt-4o",
+                    messages=[
+                        {"role": "system", "content": "Ты речевой помощник. Человек только что описал ситуацию. Переформулируй её кратко и бережно, одним-двумя предложениями, чтобы уточнить, правильно ли ты понял суть запроса. В конце задай вопрос: «Это и есть суть ситуации?»"},
+                        {"role": "user", "content": user_message}
+                    ]
+                )
+                reply = completion.choices[0].message.content.strip()
+
+            elif current_phase == "desired_result":
+                completion = client.chat.completions.create(
+                    model="gpt-4o",
+                    messages=[
+                        {"role": "system", "content": "Ты речевой помощник. Человек только что описал желаемый результат или образ будущего. Сформулируй это кратко и позитивно — и задай уточняющий вопрос: «Так вы себе это представляете?»"},
+                        {"role": "user", "content": user_message}
+                    ]
+                )
+                reply = completion.choices[0].message.content.strip()
+
+            else:
+                reply = phases[current_phase]
+
+            user_state[chat_id] += 1
+
             current_phase = phase_order[state_index]
 
 
