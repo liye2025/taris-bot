@@ -94,10 +94,24 @@ def webhook():
 
         state_index = user_state[chat_id]
 
+        
         if state_index < len(phase_order):
             current_phase = phase_order[state_index]
-            reply = phases[current_phase]
+
+            if current_phase == "problem":
+                completion = client.chat.completions.create(
+                    model="gpt-4o",
+                    messages=[
+                        {"role": "system", "content": "Ты речевой помощник. Человек только что описал ситуацию. Переформулируй её кратко и бережно, одним-двумя предложениями, чтобы уточнить, правильно ли ты понял суть запроса. В конце задай вопрос: «Это и есть суть ситуации?»"},
+                        {"role": "user", "content": user_message}
+                    ]
+                )
+                reply = completion.choices[0].message.content.strip()
+            else:
+                reply = phases[current_phase]
+
             user_state[chat_id] += 1
+
         else:
             reply = "Если вы хотите начать заново — напишите /start."
 
@@ -114,3 +128,4 @@ def webhook():
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
