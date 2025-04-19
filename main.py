@@ -59,8 +59,6 @@ def webhook():
 
         user_label = user_id_map[chat_id]
 
-        
-        # Обработка команды /getlogs (только для Лизы)
         if user_message.strip().lower() == "/getlogs":
             if chat_id == 326450794:
                 with open("/tmp/logs.txt", "rb") as log_file:
@@ -92,8 +90,6 @@ def webhook():
             })
             return {"ok": True}
 
-        
-        # Храним фазу диалога
         if chat_id not in user_state:
             user_state[chat_id] = "phase_1"
 
@@ -104,16 +100,7 @@ def webhook():
         ]
 
         if any(phrase in user_message.lower() for phrase in CRITICAL_PHRASES):
-            SYSTEM_PROMPT += """
-
-Дополнение:
-Пользователь выражает тревогу или негативное ожидание.
-Ты должен остановить уточнения и перейти к поддерживающей аналитике:
-— Признать важность сказанного;
-— Сделать краткий микровывод;
-— Предложить два направления анализа (варианты действий, приоритеты, возможные шаги);
-— Спросить, с чего пользователь хотел бы начать.
-"""
+            SYSTEM_PROMPT += """\n\nДополнение:\nПользователь выражает тревогу или негативное ожидание.\nТы должен остановить уточнения и перейти к поддерживающей аналитике:\n— Признать важность сказанного;\n— Сделать краткий микровывод;\n— Предложить два направления анализа (варианты действий, приоритеты, возможные шаги);\n— Спросить, с чего пользователь хотел бы начать."""
 
         if user_state[chat_id] == "phase_1":
             reply = (
@@ -142,6 +129,22 @@ def webhook():
                 "Хорошо. А теперь попробуем сформулировать противоречие: "
                 "что мешает, что сдерживает, где застревает решение?"
             )
+            user_state[chat_id] = "summary"
+
+        elif user_state[chat_id] == "summary":
+            reply = (
+                "Спасибо, что вы прошли этот путь размышления. Мы уточнили суть задачи, "
+                "осветили разные стремления и противоречия, которые стоят на пути.\n\n"
+                "Теперь можно попробовать составить небольшой план действий — что вы могли бы сделать, "
+                "исходя из того, что мы обсудили. Я могу помочь вам сформулировать шаги, если хотите."
+            )
+            user_state[chat_id] = "done"
+
+        elif user_state[chat_id] == "phase_4":  # резерв на случай сбоя
+            reply = (
+                "Хорошо. А теперь попробуем сформулировать противоречие: "
+                "что мешает, что сдерживает, где застревает решение?"
+            )
             user_state[chat_id] = "done"
 
         else:
@@ -154,14 +157,13 @@ def webhook():
             )
             reply = chat_completion.choices[0].message.content.strip()
 
-
         requests.post(TELEGRAM_API_URL, json={
             "chat_id": chat_id,
             "text": reply
         })
 
         log_text = f"# {user_label}\nПользователь:\n{user_message}\n\nТарис:\n{reply}\n\n---\n"
-        with open("logs.txt", "a", encoding="utf-8") as log_file:
+        with open("/tmp/logs.txt", "a", encoding="utf-8") as log_file:
             log_file.write(log_text)
 
     return {"ok": True}
