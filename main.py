@@ -125,7 +125,17 @@ def webhook():
                         {"role": "user", "content": user_message}
                     ]
                 )
+                
+            elif current_phase == "resolve_contradiction":
+                completion = client.chat.completions.create(
+                    model="gpt-4o",
+                    messages=[
+                        {"role": "system", "content": "Ты речевой помощник. Человек описал противоречие или напряжение между тем, чего он хочет, и тем, что мешает. Помоги бережно сформулировать это противоречие и уточни: «Так вы это ощущаете?»"},
+                        {"role": "user", "content": user_message}
+                    ]
+                )
                 reply = completion.choices[0].message.content.strip()
+reply = completion.choices[0].message.content.strip()
 reply = completion.choices[0].message.content.strip()
 
             else:
